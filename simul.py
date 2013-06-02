@@ -54,10 +54,9 @@ class Entreprise(multiprocessing.Process):
         for cli in self.clients:
             cli.send('Envoi du catalogue' )
 
-        t = 10
+        t = 1
         print "ENT :  Waiting "
         time.sleep(t)
-        print "END"
 
         ## Boucle principale
         shutdown = False
@@ -146,10 +145,12 @@ def compute():
     ## Attente
     time.sleep(5)
     ## Arret
+    print "sending kill"
     for process in processes:
         print process.name
         kill_queue.put(True)
                     
+    print "Join"
     for process in processes:
         print process.name
         process.join()
