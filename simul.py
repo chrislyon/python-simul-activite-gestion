@@ -21,28 +21,31 @@ class Client(multiprocessing.Process):
         self.kill_q = kill_q
         self.ent = ent
 
+    def log(self, msg):
+        print "CLIENT : %s : %s " % ( self.name, msg)
+
     def run(self):
-        print "Client : %s " % self.no
+        self.log(" debut ")
         kill_flag = False
         while not kill_flag:
             ## ais je recu qq chose ?
             while self.ent.poll(POLL_TIMEOUT):
                 msg = self.ent.recv()
-                print "Client : %s : recv : %s" % ( self.no, msg )
-                self.ent.send("Client : %s : OK [%s]" % (self.no, msg ))
+                self.log( "recv : %s" % msg )
+                self.ent.send("CLI[%s] : OK [%s]" % (self.no, msg ))
 
             ## On envoi qq chose ?
             if random.choice(range(100)) > 50:
                 self.ent.send('Client : %s envoi de commande' % self.no )
             else:
                 sleep_time = 5
-                print 'Client %s en attente' % self.no
+                self.log( 'En attente')
                 time.sleep(sleep_time)
 
             ## Si Kill Flag on arrete
             if not self.kill_q.empty():
                 kill_flag = self.kill_q.get()
-                print 'KILL FLAG => %s' % self.no
+                self.log( 'Recu KILL FLAG ')
         return
 
 class Entreprise(multiprocessing.Process):
@@ -52,30 +55,33 @@ class Entreprise(multiprocessing.Process):
         self.clients = clients
         self.name = "ENTREPRISE"
 
+    def log(self, msg):
+        print "ENT : %s " % msg
+
     def run(self):
-        print "ENT : Ouverture"
+        self.log("OUVERTURE")
         for cli in self.clients:
             cli.send('Envoi du catalogue' )
 
         t = 1
-        print "ENT :  Waiting "
+        self.log("WAITING")
         time.sleep(t)
 
         ## Boucle principale
         shutdown = False
 
         while not shutdown:
-            print "ENT : loop"
+            self.log("Loop")
             for client in self.clients:
                 while client.poll(POLL_TIMEOUT):
-                    print 'Recu du client : %s' % client.recv()
+                    self.log( 'Recu du client : %s' % client.recv() )
 
             ## ON ferme ?
             if not self.kill_q.empty():
                 shutdown = self.kill_q.get()
-                print 'ENT : SHUTDOWN ...'
+                self.log( 'SHUTDOWN received ...' )
 
-        print "ENT :  Fermeture "
+        self.log( "Fermeture " )
         return
 
 
@@ -109,14 +115,14 @@ def compute():
     ## Arret
     print "====> sending kill"
     for process in processes:
-        print process.name
+        print "kill : %s " % process.name
         kill_queue.put(True)
                     
     time.sleep(10)
-    print "====> Join"
+    print "====> Joining processes"
     processes.reverse()
     for process in processes:
-        print process.name
+        print "join : %s " % process.name
         process.join(5)
 
 ## ---------------
