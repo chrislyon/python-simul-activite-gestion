@@ -9,6 +9,8 @@ import random
 import time
 import os, sys
 
+POLL_TIMEOUT = 1
+
 BASE_FILE = "test.dbf"
 
 class Client(multiprocessing.Process):
@@ -24,23 +26,24 @@ class Client(multiprocessing.Process):
         kill_flag = False
         while not kill_flag:
             ## ais je recu qq chose ?
-            while self.ent.poll():
+            while self.ent.poll(POLL_TIMEOUT):
                 msg = self.ent.recv()
                 print "Client : %s : recv : %s" % ( self.no, msg )
                 self.ent.send("Client : %s : OK [%s]" % (self.no, msg ))
 
-        ## On envoi qq chose ?
-        if random.choice(range(100)) > 50:
-            self.ent.send('Client : %s envoi de commande' % self.no )
-        else:
-            sleep_time = 5
-            print 'Client %s en attente' % self.no
-            time.sleep(sleep_time)
+            ## On envoi qq chose ?
+            if random.choice(range(100)) > 50:
+                self.ent.send('Client : %s envoi de commande' % self.no )
+            else:
+                sleep_time = 5
+                print 'Client %s en attente' % self.no
+                time.sleep(sleep_time)
 
-        ## Si Kill Flag on arrete
-        if not self.kill_q.empty():
-            kill_flag = self.kill_q.get()
-            print 'KILL FLAG => %s' % self.no
+            ## Si Kill Flag on arrete
+            if not self.kill_q.empty():
+                kill_flag = self.kill_q.get()
+                print 'KILL FLAG => %s' % self.no
+        return
 
 class Entreprise(multiprocessing.Process):
     def __init__(self, kill_q, clients ):
@@ -62,61 +65,20 @@ class Entreprise(multiprocessing.Process):
         shutdown = False
 
         while not shutdown:
+            print "ENT : loop"
             for client in self.clients:
-                while client.poll():
+                while client.poll(POLL_TIMEOUT):
                     print 'Recu du client : %s' % client.recv()
 
             ## ON ferme ?
             if not self.kill_q.empty():
                 shutdown = self.kill_q.get()
                 print 'ENT : SHUTDOWN ...'
+
         print "ENT :  Fermeture "
+        return
 
 
-def ent_process(nb_client, fic,  kill_q):
-    log( "Ouverture", fic)
-    clients = []
-    kill_queue = multiprocessing.Queue()
-
-    ## Initialisation 
-    ## Creation des clients
-    for number in range(nb_client):
-        ent_connexion, cli_connexion = multiprocessing.Pipe()
-        clients.append(ent_connexion)
-        process = multiprocessing.Process(target=client_process, args=(number,kill_queue,cli_connexion,))
-        process.start()
-        processes.append(process)
-
-    # Les clients sont crées
-    ## On transmets le catalogue
-    for number, client in enumerate(clients):
-        client.send('Envoi du Catalogue : %s' % number)
-
-    ## On attend un peu
-    t = 10
-    log( "MAIN SLEEP : %s " % t, fic)
-    time.sleep(t)
-
-    ## Boucle principale
-    shutdown = False
-
-    while not shutdown:
-        for client in clients:
-            while client.poll():
-                print 'Recu du client : %s' % client.recv()
-
-        ## ON ferme ?
-        if not kill_queue.empty():
-            shutdown = kill_q.get()
-            print 'SHUTDOWN ...'
-
-    ## Fermeture des processes
-    for process in processes:
-        kill_queue.put(True)
-                    
-    for process in processes:
-        process.join()
-    log( "Fermeture ...", fic)
 
 ## -------------
 ## Lancement 
@@ -145,15 +107,17 @@ def compute():
     ## Attente
     time.sleep(5)
     ## Arret
-    print "sending kill"
+    print "====> sending kill"
     for process in processes:
         print process.name
         kill_queue.put(True)
                     
-    print "Join"
+    time.sleep(10)
+    print "====> Join"
+    processes.reverse()
     for process in processes:
         print process.name
-        process.join()
+        process.join(5)
 
 ## ---------------
 ## Main
