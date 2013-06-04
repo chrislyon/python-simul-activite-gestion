@@ -3,11 +3,12 @@
 
 
 import multiprocessing
-import initialisation
 import sqlite3
 import random
 import time
 import os, sys
+
+import BDD
 
 POLL_TIMEOUT = 1
 
@@ -60,6 +61,7 @@ class Entreprise(multiprocessing.Process):
 
     def run(self):
         self.log("OUVERTURE")
+        self.log("ENVOI DU CATALOGUE")
         for cli in self.clients:
             cli.send('Envoi du catalogue' )
 
@@ -84,13 +86,12 @@ class Entreprise(multiprocessing.Process):
         self.log( "Fermeture " )
         return
 
-
-
 ## -------------
 ## Lancement 
 ## -------------
 def compute():
-    #initialisation.init_base()
+    ## A revoir
+    #BDD.init_base()
 
     processes = []
     ## Creation clients

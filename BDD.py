@@ -1,16 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*- 
 
-from multiprocessing import Process, Manager
 import sqlite3
 import os
-
-BASE_FILE = "test.dbf"
 
 ## ---------------------------------
 ## Creation de la base de données
 ## ---------------------------------
-def init_base():
+def create_base( BASE_FILE ):
     try:
         os.remove( BASE_FILE )
     except:
@@ -68,14 +65,32 @@ def init_base():
     conn.commit()
     conn.close()
 
-## -------------
-## Lancement 
-## -------------
-def run():
-    init_base()
+class BDD():
+    def __init__(self, FIC_BASE):
+        #ouverture de la base
+        self.conn = sqlite3.connect(FIC_BASE)
 
-## ---------------
-## Main
-## ---------------
+    def get_param(self, param_name):
+        c = self.conn.cursor()
+        c.execute("select CODPAR, TYP, VALUE from PARAM where CODPAR='%s';" % param_name)
+        data = c.fetchone()
+        if data:
+            t = data[1]
+            v = data[2]
+            if t == 1:  ## int
+                return int(v)
+            elif t == 2:    ## String
+                return v
+        else:
+            return None
+
+def test():
+    F = 'test.dbf'
+    create_base(F)
+    BASE = BDD(F)
+    ## Test get_param
+    print "NB_PRODUIT = ", BASE.get_param('NB_PRODUIT')
+    print "Inexistant = ", BASE.get_param('inexistant')
+
 if __name__ == '__main__':
-    run()
+    test()
