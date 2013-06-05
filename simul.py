@@ -65,7 +65,7 @@ class Client(multiprocessing.Process):
                     M.origine = self.name
                     self.ent.send(M)
                 else:
-                    sleep_time = 5
+                    sleep_time = 1
                     self.log( 'En attente')
                     time.sleep(sleep_time)
 
@@ -152,7 +152,7 @@ def compute():
     processes.append(Ent)
     Ent.start()
     ## Attente
-    time.sleep(10)
+    time.sleep(20)
     ## Arret
     print "====> sending kill"
     for process in processes:

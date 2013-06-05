@@ -6,6 +6,8 @@ syntax: glob
 *.dbf
 *~
 */*.pyc
+*.log
+*/*.log
 
 # switch to regexp syntax.
 syntax: regexp
