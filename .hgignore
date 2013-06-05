@@ -1,0 +1,15 @@
+# use glob syntax.
+syntax: glob
+
+*.elc
+*.pyc
+*.dbf
+*~
+*/*.pyc
+
+# switch to regexp syntax.
+syntax: regexp
+
+#exemple
+#static/ext-3.4.1/
+.pyc$
