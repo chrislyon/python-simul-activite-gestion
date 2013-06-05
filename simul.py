@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*- 
 
+##
+## Simulation d'activite
+##
 
 import multiprocessing
 import sqlite3
