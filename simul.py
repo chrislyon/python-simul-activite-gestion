@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*- 
 
-##
+## ------------------------
 ## Simulation d'activite
-##
+## ------------------------
 
 import multiprocessing
 import sqlite3
@@ -17,13 +17,21 @@ POLL_TIMEOUT = 1
 
 BASE_FILE = "test.dbf"
 
+class Message():
+    def __init__(self):
+        self.origine = ""
+        self.text = ""
+        self.cmd = ""
+        self.value = None
+
 class Client(multiprocessing.Process):
-    def __init__(self, n, kill_q, ent):
+    def __init__(self, n, kill_q, ent=None):
         multiprocessing.Process.__init__(self)
         self.no = n
         self.name = "CLI%04d" % n
         self.kill_q = kill_q
         self.ent = ent
+        self.en_compte = False
 
     def log(self, msg):
         print "CLIENT : %s : %s " % ( self.name, msg)
@@ -32,28 +40,45 @@ class Client(multiprocessing.Process):
         self.log(" debut ")
         kill_flag = False
         while not kill_flag:
-            ## ais je recu qq chose ?
-            while self.ent.poll(POLL_TIMEOUT):
-                msg = self.ent.recv()
-                self.log( "recv : %s" % msg )
-                self.ent.send("CLI[%s] : OK [%s]" % (self.no, msg ))
+            ## Si je suis connecte
+            if self.ent:
+                ## Suis-je identifie ?
+                if not self.en_compte:
+                    M = Message()
+                    M.cmd = "IDENTIFICATION"
+                    M.origine = self.name
+                    self.ent.send(M)
 
-            ## On envoi qq chose ?
-            if random.choice(range(100)) > 50:
-                self.ent.send('Client : %s envoi de commande' % self.no )
-            else:
-                sleep_time = 5
-                self.log( 'En attente')
-                time.sleep(sleep_time)
+                ## ais je recu qq chose ?
+                while self.ent.poll(POLL_TIMEOUT):
+                    msg = self.ent.recv()
+                    self.log( "recv : %s" % msg.text )
+                    #self.ent.send("CLI[%s] : OK [%s]" % (self.no, msg ))
+                    if msg.cmd == "CATALOGUE":
+                        self.en_compte = True
+                        self.log("RECU CATALOG : %s " % msg.value )
+
+                ## On envoi qq chose ?
+                if self.en_compte and random.choice(range(100)) > 50:
+                    M = Message()
+                    M.text = "ENVOI DE COMMANDE"
+                    M.origine = self.name
+                    self.ent.send(M)
+                else:
+                    sleep_time = 5
+                    self.log( 'En attente')
+                    time.sleep(sleep_time)
 
             ## Si Kill Flag on arrete
             if not self.kill_q.empty():
                 kill_flag = self.kill_q.get()
                 self.log( 'Recu KILL FLAG ')
+            ## Attente
+            time.sleep(1)
         return
 
 class Entreprise(multiprocessing.Process):
-    def __init__(self, kill_q, clients ):
+    def __init__(self, kill_q, clients=None ):
         multiprocessing.Process.__init__(self)
         self.kill_q = kill_q
         self.clients = clients
@@ -64,9 +89,11 @@ class Entreprise(multiprocessing.Process):
 
     def run(self):
         self.log("OUVERTURE")
-        self.log("ENVOI DU CATALOGUE")
-        for cli in self.clients:
-            cli.send('Envoi du catalogue' )
+
+        ## En attente on verra plus tard
+        #self.log("ENVOI DU CATALOGUE")
+        #for cli in self.clients:
+        #    cli.send('Envoi du catalogue' )
 
         t = 1
         self.log("WAITING")
@@ -76,16 +103,26 @@ class Entreprise(multiprocessing.Process):
         shutdown = False
 
         while not shutdown:
-            self.log("Loop")
-            for client in self.clients:
-                while client.poll(POLL_TIMEOUT):
-                    self.log( 'Recu du client : %s' % client.recv() )
+            if self.clients:
+                for client in self.clients:
+                    while client.poll(POLL_TIMEOUT):
+                        msg = client.recv()
+                        self.log( 'Recu du client : %s [cmd=%s : t=%s]' % ( msg.origine, msg.cmd, msg.text ))
+                        if msg.cmd == "IDENTIFICATION":
+                            M = Message()
+                            M.origine = self.name
+                            M.cmd = "CATALOGUE"
+                            M.value = [ 'PRO1', 'PRO2', 'PRO3' ]
+                            self.log( "Sending catalogue %s" % msg.origine )
+                            client.send(M)
+
 
             ## ON ferme ?
             if not self.kill_q.empty():
                 shutdown = self.kill_q.get()
                 self.log( 'SHUTDOWN received ...' )
 
+            time.sleep(1)
         self.log( "Fermeture " )
         return
 
@@ -115,7 +152,7 @@ def compute():
     processes.append(Ent)
     Ent.start()
     ## Attente
-    time.sleep(5)
+    time.sleep(10)
     ## Arret
     print "====> sending kill"
     for process in processes:

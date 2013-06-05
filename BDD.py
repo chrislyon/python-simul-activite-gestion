@@ -6,15 +6,20 @@
 import sqlite3
 import os
 
-## ---------------------------------
-## Creation de la base de données
-## ---------------------------------
+## -----------------------------------------
+## Permet de retourner les rows en type dict
+## Au liue d'une suite de tuple
+## Specifique sqlite3
+## -----------------------------------------
 def dict_factory(cursor, row):
     d = {}
     for idx, col in enumerate(cursor.description):
         d[col[0]] = row[idx]
     return d
 
+## ---------------------------------
+## Creation de la base de données
+## ---------------------------------
 def create_base( BASE_FILE ):
     try:
         os.remove( BASE_FILE )
