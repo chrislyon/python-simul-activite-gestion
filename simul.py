@@ -43,6 +43,7 @@ class Client(multiprocessing.Process):
             ## Si je suis connecte
             if self.ent:
                 ## Suis-je identifie ?
+                self.log("Identification")
                 if not self.en_compte:
                     M = Message()
                     M.cmd = "IDENTIFICATION"
@@ -78,14 +79,18 @@ class Client(multiprocessing.Process):
         return
 
 class Entreprise(multiprocessing.Process):
-    def __init__(self, kill_q, clients=None ):
+    def __init__(self, kill_q ):
         multiprocessing.Process.__init__(self)
         self.kill_q = kill_q
-        self.clients = clients
+        self.clients = []
         self.name = "ENTREPRISE"
 
     def log(self, msg):
         print "ENT : %s " % msg
+
+    def add_client(self, cli):
+        self.log(" Ajout de %s " % cli )
+        self.clients.append(cli)
 
     def run(self):
         self.log("OUVERTURE")
@@ -115,7 +120,9 @@ class Entreprise(multiprocessing.Process):
                             M.value = [ 'PRO1', 'PRO2', 'PRO3' ]
                             self.log( "Sending catalogue %s" % msg.origine )
                             client.send(M)
-
+            else:
+                self.log("En attente de clients ... %s " % self.clients)
+                time.sleep(1)
 
             ## ON ferme ?
             if not self.kill_q.empty():
@@ -133,23 +140,25 @@ def compute():
     ## A revoir
     #BDD.init_base()
 
+    ## Initialisation 
     processes = []
-    ## Creation clients
     clients = []
     kill_queue = multiprocessing.Queue()
 
-    ## Initialisation 
+    ## Creation de l'entreprise
+    Ent = Entreprise( kill_queue )
+    processes.append(Ent)
     ## Creation des clients
     nb_client = 5
     for n in range(nb_client):
+        print "Creation client %s " % n
         ent_conn, cli_conn = multiprocessing.Pipe()
-        clients.append(ent_conn)
+        #clients.append(ent_conn)
+        Ent.add_client(ent_conn)
         c = Client(n, kill_queue, cli_conn)
         c.start()
         processes.append(c)
-    ## Creation de l'entreprise
-    Ent = Entreprise( kill_queue, clients )
-    processes.append(Ent)
+        time.sleep(1)
     Ent.start()
     ## Attente
     time.sleep(20)
