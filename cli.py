@@ -1,4 +1,4 @@
-import cmd
+import cmd2
 
 import multiprocessing
 import time
@@ -70,15 +70,15 @@ class Instance():
         self.cr_clients(5)
         self.start_all()
 
-class Simulator(cmd.Cmd):
+class Simulator(cmd2.Cmd):
     """Simple command processor example."""
     
     INSTANCE = Instance("Entreprise")
 
-    def do_status(self):
+    def do_status(self, line):
         print "Status : %s " % Simulator.INSTANCE.status
 
-    def help_status(self, opt):
+    def help_status(self):
         print '\n'.join([ 'status', 
                           "Affiche le status courant de l'instance", 
                         ])
