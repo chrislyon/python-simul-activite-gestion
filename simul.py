@@ -32,6 +32,7 @@ class Client(multiprocessing.Process):
         self.kill_q = kill_q
         self.ent = ent
         self.en_compte = False
+        self.data = {}
 
     def log(self, msg):
         print "CLIENT : %s : %s " % ( self.name, msg)
@@ -58,12 +59,15 @@ class Client(multiprocessing.Process):
                     if msg.cmd == "CATALOGUE":
                         self.en_compte = True
                         self.log("RECU CATALOG : %s " % msg.value )
+                        self.data["CATALOGUE"] = msg.value
 
                 ## On envoi qq chose ?
                 if self.en_compte and random.choice(range(100)) > 50:
                     M = Message()
                     M.text = "ENVOI DE COMMANDE"
                     M.origine = self.name
+                    M.cmd = "COMCLI"
+                    M.value = self.set_COMMANDE()
                     self.ent.send(M)
                 else:
                     sleep_time = 1
@@ -77,6 +81,17 @@ class Client(multiprocessing.Process):
             ## Attente
             time.sleep(1)
         return
+
+    def set_COMMANDE(self):
+        cde = []
+        CAT = self.data['CATALOGUE']
+        self.log("GENERATION COMMANDE")
+        for produit in CAT:
+            qte = random.randrange(1,100)
+            cde.append( (produit, qte) )
+            self.log("Pro:%s qte=%s" % (produit, qte) )
+        return cde
+
 
 class Entreprise(multiprocessing.Process):
     def __init__(self, kill_q ):
@@ -113,6 +128,8 @@ class Entreprise(multiprocessing.Process):
                     while client.poll(POLL_TIMEOUT):
                         msg = client.recv()
                         self.log( 'Recu du client : %s [cmd=%s : t=%s]' % ( msg.origine, msg.cmd, msg.text ))
+                        if msg.cmd == "COMCLI":
+                            self.log("Recu commande : %s / %s / %s " % (msg.origine, msg.cmd, msg.value))
                         if msg.cmd == "IDENTIFICATION":
                             M = Message()
                             M.origine = self.name
